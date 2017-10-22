@@ -24,32 +24,47 @@ def sort_insert(lst):
             i -= 1
     return res
 
-def merge(left, right):
-    res = []
-    i, j = 0, 0
-    while i < len(left) and j < len(right):
-        if left[i] <= right[j]:
-            res.append(left[i])
-            i += 1
-        else:
-            res.append(right[j])
-            j += 1
-        res += left[i:]
-        res += right[j:]
+def sort_select(lst):
+    res = lst.copy()
+    for i in range(len(res)):
+        i_min = i
+        for j in range(i + 1, len(res)):
+            if res[j] < res[i_min]:
+                i_min = j
+        res[i_min], res[i] = res[i], res[i_min]
     return res
 
 def sort_merge(lst):
     res = lst.copy()
-    if len(res) <= 1:
-        return res
-    else:
+    
+    if len(res) > 1:
         mid = len(res) // 2
-        left = res[:mid]
-        right = res[mid:]
-    return merge(sort_merge(left), sort_merge(right))
-
+        left = res[:mid].copy()
+        right = res[mid:].copy()
+        left = sort_merge(left)
+        right = sort_merge(right)
+        i, j, k = 0, 0, 0
+        while i < len(left) and j < len(right):
+            if left[i] < right[j]:
+                res[k] = left[i]
+                i += 1
+            else:
+                res[k] = right[j]
+                j += 1
+            k += 1
+        while i < len(left):
+            res[k] = left[i]
+            i += 1
+            k += 1
+        
+        while j < len(right):
+            res[k] = right[j]
+            j += 1
+            k += 1
+    return res
 
 begin = np.random.randint(1,100,10)
 print(sort_bubble(begin))
 print(sort_insert(begin))
+print(sort_select(begin))
 print(sort_merge(begin))
