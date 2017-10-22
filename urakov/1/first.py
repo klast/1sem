@@ -7,33 +7,40 @@
 import numpy
 
 def swap(st, i, j):
-    st = list(st)
     st[i], st[j] = st[j], st[i]
-    return ''.join(st)
+    return st
 
-def reverse(string, i, j):
-    res = string[:i]
-    res += string[:i-1:-1]
-    return res
-
-    
-
-def next(prev):
-    i = len(prev) - 2
-    res = prev
-    while i>=0 and prev[i]>prev[i + 1]:
-        i-=1
+def next(current):
+    i = len(current) - 2
+    res = list(current)
+    while i >= 0 and current[i] > current[i + 1]:
+        i -= 1
     if i < 0:
         return []
-    j = len(prev) - 1
-    while prev[j] < prev[i]:
-        j-=1
-    res = swap(res, i, j)
-    res = list(res)
+    j = len(current) - 1
+    while current[j] < current[i]:
+        j -= 1
+    res = swap(res, i, j)    
     res[i+1:] = res[:i:-1]
     return "".join(res)
 
-res = next('abced')
+def prev(current):
+    i = len(current) - 2
+    res = list(current)
+    while i >= 0 and current[i] < current[i + 1]:
+        i -= 1
+    if i < 0:
+        return []
+    j = len(current) - 1
+    while current[j] > current[i]:
+        j -= 1
+    res = swap(res, i, j)
+    res[i+1:] = res[:i:-1]
+    return "".join(res)
+    
+res = next('abcd')
+print(res)
+res = prev(res)
 print(res)
         
 
