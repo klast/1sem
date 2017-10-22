@@ -19,18 +19,21 @@ def reverse(string, i, j):
     
 
 def next(prev):
-    n = len(prev)
-    for i in range(n-2, 0, -1):
-        if prev[i] < prev[i+1]:
-            min = i + 1
-            for j in range(i + 1, n, 1):
-                if(prev[j] < prev[min]) and (prev[j] > prev[i]):
-                    min = j
-            tmp = swap(prev, i, min)
-            res = reverse(tmp, i + 1, n - 1)
-            return res
-    return None
-res = next('13254')
+    i = len(prev) - 2
+    res = prev
+    while i>=0 and prev[i]>prev[i + 1]:
+        i-=1
+    if i < 0:
+        return []
+    j = len(prev) - 1
+    while prev[j] < prev[i]:
+        j-=1
+    res = swap(res, i, j)
+    res = list(res)
+    res[i+1:] = res[:i:-1]
+    return "".join(res)
+
+res = next('abced')
 print(res)
         
 
