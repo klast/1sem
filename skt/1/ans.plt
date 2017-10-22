@@ -1,0 +1,1 @@
+plot 'ans.txt' with lines
