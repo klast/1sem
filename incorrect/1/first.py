@@ -46,7 +46,7 @@ n = 10
 m = 10
 bounds = []
 for i in range(10):
-    bounds.append((0, 2))
+    bounds.append((0, 10))
 
 if __name__ == "__main__":
 #1
