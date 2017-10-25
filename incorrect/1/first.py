@@ -23,7 +23,7 @@ def my_solve(A_approx, U_approx, ld, h, sigma):
     ZAlpha = np.linalg.solve(A_k + alpha_n * np.eye(m), B)
     right_rho = rho(A_approx, ZAlpha, u_approx, ld)
     
-    while abs(right_rho) >= 1e-6 and abs(left_rho) >= 1e-6:
+    while abs(right_rho) >= 1e-8 and abs(left_rho) >= 1e-8:
         alpha = (alpha_0 + alpha_n) / 2
         ZAlpha = np.linalg.solve(A_k + alpha * np.eye(m), B)
         mid_rho = rho(A_approx, ZAlpha, u_approx, ld)
@@ -52,7 +52,7 @@ if __name__ == "__main__":
 #1
     A = np.random.random((n, m))
     if np.linalg.det(A) < 1000:
-        A = A + 5 * np.eye(m)
+        A = A + 3 * np.eye(m)
 #2
     z = np.random.random(n)
 #3
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         sigma_vec.append(sigma)
         x0 = np.random.random(m)
 #LD = lambda z: np.linalg.norm(np.dot(A_approx, z) - u_approx) + h*np.linalg.norm(z) + sigma
-        lambda_delta = sc.differential_evolution(LambdaDelta, bounds)
+        lambda_delta = sc.differential_evolution(LambdaDelta, bounds, tol = 0.0001)
         min_value.append(LambdaDelta(lambda_delta.x))
         print(LambdaDelta(lambda_delta.x))
         real_value.append(LambdaDelta(z))
