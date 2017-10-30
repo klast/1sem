@@ -15,35 +15,31 @@ def sort_bubble(lst):
                 res[j], res[j - 1] = res[j - 1], res[j]
     return res
 
-def sort_insert(lst):
-    res = lst.copy()
-    n = len(res)
-    for i in range(1, n):
-        while i > 0 and res[i] < res[i - 1]:
-            res[i], res[i - 1] = res[i - 1], res[i]
-            i -= 1
-    return res
-
 def sort_select(lst):
     res = lst.copy()
-    for i in range(len(res)):
+    n = len(res)
+    for i in range(n):
         i_min = i
-        for j in range(i + 1, len(res)):
+        for j in range(i + 1, n):
             if res[j] < res[i_min]:
                 i_min = j
         res[i_min], res[i] = res[i], res[i_min]
     return res
 
 def sort_merge(lst):
-    res = lst.copy()
-    
+    res = lst.copy()    
     if len(res) > 1:
         mid = len(res) // 2
         left = res[:mid].copy()
-        right = res[mid:].copy()
-        left = sort_merge(left)
-        right = sort_merge(right)
+        right = res[mid:].copy()        
+        if len(left) > 1:
+            print("Beginning to sort left = ",left)
+            left = sort_merge(left)
+        if len(right) > 1:
+            print("Beginning to sort right = ", right)
+            right = sort_merge(right)
         i, j, k = 0, 0, 0
+        print("Beginning to merge ", left ,'and ', right)
         while i < len(left) and j < len(right):
             if left[i] < right[j]:
                 res[k] = left[i]
@@ -52,19 +48,27 @@ def sort_merge(lst):
                 res[k] = right[j]
                 j += 1
             k += 1
+            [ print(res[i],end=" ") for i in range(k)]
+            print("",end = '\n')
+            
         while i < len(left):
             res[k] = left[i]
             i += 1
             k += 1
-        
+            [ print(res[i],end=" ") for i in range(k)]
+            print("",end = '\n')
         while j < len(right):
             res[k] = right[j]
             j += 1
             k += 1
+            [ print(res[i],end=" ") for i in range(k)]
+            print("",end = '\n')
+        if len(left) > 1 or len(right) > 1:
+            print('merged = ', res)
     return res
 
-begin = np.random.randint(1,100,10)
-print(sort_bubble(begin))
-print(sort_insert(begin))
-print(sort_select(begin))
-print(sort_merge(begin))
+begin = np.random.randint(1,100,8)
+print("unsorted = ", begin)
+#print(sort_bubble(begin))
+#print(sort_select(begin))
+print('sorted_list = ', sort_merge(begin))
