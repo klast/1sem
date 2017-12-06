@@ -1,0 +1,8 @@
+A=np.zeros((m,m))
+for i in range(n):
+    for j in range(n):
+        k=Nums[i,j]
+        A[k,k]=-4
+	## k-я строка матрицы A
+	?????
+

@@ -1,0 +1,10 @@
+k=0 # текущий номер переменной
+Nums=np.zeros(P.shape,dtype=np.int32)-1
+for i in range(n):
+    for j in range(n):
+        #print("%d %d %d:" % (i,j, P[i,j]))
+	?????           Nums[i,j]=
+
+print("Номера переменных, соответствующих узлам сетки:")
+print(Nums)
+m=???????

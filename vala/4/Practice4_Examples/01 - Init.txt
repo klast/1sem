@@ -1,0 +1,5 @@
+import numpy as np
+import numpy.linalg as la
+np.set_printoptions(edgeitems=7,precision=3) # 3 знако после запятой, 7 элементов в матрице по краям до многоточий
+np.core.arrayprint._line_width = 200 # широкие строки в браузере для широкого экрана
+

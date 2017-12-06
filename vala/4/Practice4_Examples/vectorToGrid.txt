@@ -1,0 +1,13 @@
+def vectorToGrid(x, Nums):
+    n=Nums.shape[0]
+    U=np.zeros(Nums.shape)
+    for i in range(n):
+        for j in range(n):
+            if ????:
+                U[i,j]=0
+            else:
+                U[i,j]= ???? ИЗ ВЕКТОРА x
+    #print(U)
+    return U
+
+print(vectorToGrid(np.random.rand(???),Nums))

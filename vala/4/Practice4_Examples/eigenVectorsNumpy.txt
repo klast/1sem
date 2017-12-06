@@ -1,0 +1,5 @@
+%time k,V=la.eig(A)
+
+idx=np.argsort(k) ### idx - номера элементов массива k в порядке возрастания значений
+idx=idx[::-1] ### idx - yjvt
+k[idx]
