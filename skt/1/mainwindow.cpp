@@ -7,10 +7,10 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    x0 = 0;
-    xN = 1;
-    u1 = 0;
-    u2 = 2;
+    x0 = 1;
+    xN = 5;
+    u1 = 1;
+    u2 = 20;
     first_task();
 }
 
