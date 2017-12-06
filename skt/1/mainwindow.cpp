@@ -8,9 +8,9 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     x0 = 1;
-    xN = 5;
+    xN = 2;
     u1 = 1;
-    u2 = 20;
+    u2 = 3;
     first_task();
 }
 
@@ -37,7 +37,7 @@ void MainWindow::Graph()
     double dx = (xN - x0) / double(N - 1);
     for(int i = 0; i < N; i++)
     {
-        series->append(i * dx, u[i]);
+        series->append(x0 + i * dx, u[i]);
     }
     chart->setTitle("Метод прогонки");
     chart->addSeries(series);
@@ -63,15 +63,14 @@ QVector<double> MainWindow::tridiag(QVector<double> &a, QVector<double> &b, QVec
 {
     int n = a.size();
     QVector<double> p(n), q(n);
+    p[0] = -b[0] / a[0];
+    q[0] = d[0] / a[0];
     for(int i = 1; i < n; i++)
     {
         p[i] = -b[i] / (c[i] * p[i - 1] + a[i]);
         q[i] = (d[i] - c[i] * q[i - 1]) / (c[i] * p[i - 1] + a[i]);
     }
-    QVector<double> u(n);
-    p[0] = -b[0] / a[0];
-    q[0] = d[0] / a[0];
-    p[n - 1] = 0;
+    QVector<double> u(n);  
     u[n - 1] = (d[n - 1] - c[n - 1] * q[n - 1]) / (a[n - 1] + c[n - 1] * p[n - 1]);
     for(int i = n - 2; i >= 0; i--)
     {
