@@ -251,18 +251,19 @@ void MainWindow::second_task()
             if (first_iteration)
                 cout << i << " pos " << pos << " k " << left_k << " " << right_k << " dx " << left_dx << " " << right_dx << " s " << s_dx << endl;
 #endif
-            diag[i] = left_k / left_dx + right_k / right_dx;
+            diag[i] = left_k / left_dx + right_k / right_dx + s_dx;
             diag_up[i] = -right_k / right_dx;
             diag_down[i] = -left_k / left_dx;
-            rhs[i] = -6 - u_old[i] * s_dx;
+            rhs[i] = 6 * s_dx;
         }
         diag[0] = k_1 / dx[0];
         rhs[0] = q_left;
         diag_up[0] = -k_1 / dx[0];
+        diag_down[0] = 0;
 
         diag[n - 1] = k_2 / dx[dx.size() - 1] + alpha_right;
         diag_down[n - 1] = -k_2 / dx[dx.size() - 1];
-        diag_up[n - 1] = k_2 / dx[dx.size() - 1];
+        diag_up[n - 1] = 0;
         rhs[n - 1] = alpha_right * T_right;
         u = tridiag(diag, diag_up, diag_down, rhs);
         qDebug() << "\t" << sq_norm(u, u_old);
