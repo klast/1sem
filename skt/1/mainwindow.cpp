@@ -137,13 +137,14 @@ void MainWindow::Graph2()
 
 void MainWindow::second_task()
 {
-    double k_1 = 237;
-    double k_2 = 174;
-    double L = 0.37;
-    double ksi = 0.75;
-    double s_l1 = 0.4, s_l2 = 0.55;
-    double left_cond = 450;
-    double right_cond = 1;
+    double k_1 = 110;
+    double k_2 = 80;
+    double L = 0.125;
+    double ksi = 1.15;
+    double s_l1 = 0.5, s_l2 = 0.75;
+    double q_left = -3;
+    double alpha_right = 0.13;
+    double T_right = 412;
 
     double L1 = L * ksi / (1.0 + ksi);
     double L2 = L - L1;
@@ -151,8 +152,8 @@ void MainWindow::second_task()
     double s_L1 = s_l1 * L;
     double s_L2 = s_l2 * L;
 
-    double start_u = 450;
-    int min_n = 100;
+    double start_u = alpha_right * T_right;
+    int min_n = 10;
 
     QVector<Condition> conds;
     conds.push_back(Condition(0, ConditionType::metal));
@@ -178,7 +179,7 @@ void MainWindow::second_task()
         conds[i].print();
     }
 
-    qDebug() << "Shortest segment [" << conds[segment_ind].x() << "; " << conds[segment_ind + 1].x() << "]" << "\n";
+    qDebug() << "Shortest segment [" << conds[segment_ind].x() << "; " << conds[segment_ind + 1].x() << "]";
 
     QVector<double> dx(conds.size() - 1);
     QVector<double> x_start(conds.size() - 1);
@@ -193,15 +194,16 @@ void MainWindow::second_task()
     for (int i = 1; i < conds.size(); i++)
         nx[i] += nx[i - 1];
 
-    qDebug() << "Segments n, dx:\n";
+    qDebug() << "Segments n, dx:";
     for (int i = 0; i < conds.size() - 1; i++)
-        qDebug() << "\t[" << conds[i].x() << "; " << conds[i + 1].x() << "]  dx = " << dx[i] << " n = " << nx[i + 1] - nx[i] << " first_x = " << x_start[i] << "\n";
+        qDebug() << "\t[" << conds[i].x() << "; " << conds[i + 1].x() << "]  dx = " << dx[i] << " n = " << nx[i + 1] - nx[i] << " first_x = " << x_start[i];
 
     int n = nx[nx.size() - 1];
 
     QVector<double> u_old(n);
     u.resize(n);
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++)
+    {
         u[i] = start_u;
         u_old[i] = u[i];
     }
@@ -221,7 +223,8 @@ void MainWindow::second_task()
         pos = 0;
         segment_ind = 0;
 
-        for (int i = 1; i < n - 1; i++) {
+        for (int i = 1; i < n - 1; i++)
+        {
             if (i >= nx[segment_ind + 1])
                 segment_ind++;
 
@@ -248,20 +251,21 @@ void MainWindow::second_task()
             if (first_iteration)
                 cout << i << " pos " << pos << " k " << left_k << " " << right_k << " dx " << left_dx << " " << right_dx << " s " << s_dx << endl;
 #endif
-            diag[i] = left_k / left_dx + right_k / right_dx - (10 + 2 * u_old[i]) * s_dx;
+            diag[i] = left_k / left_dx + right_k / right_dx;// - (10 + 2 * u_old[i]) * s_dx;
             diag_up[i] = -right_k / right_dx;
             diag_down[i] = -left_k / left_dx;
-            rhs[i] = (5 - u_old[i] * u_old[i]) * s_dx;
+            rhs[i] = 6 + u_old[i] * s_dx;//(5 - u_old[i] * u_old[i]) * s_dx;
         }
-        diag[0] = 1;
-        rhs[0] = left_cond;
-        diag_up[0] = 0;
+        diag[0] = k_1 / dx[0];
+        rhs[0] = q_left;
+        diag_up[0] = -k_1 / dx[0];
 
-        diag[n - 1] = k_2 / dx[dx.size() - 1];
+        diag[n - 1] = k_2 / dx[dx.size() - 1] + alpha_right;
         diag_down[n - 1] = -k_2 / dx[dx.size() - 1];
-        rhs[n - 1] = right_cond;
+        diag_up[n - 1] = k_2 / dx[dx.size() - 1];
+        rhs[n - 1] = alpha_right * T_right;
         u = tridiag(diag, diag_up, diag_down, rhs);
-        qDebug() << "\t" << sq_norm(u, u_old) << "\n";
+        qDebug() << "\t" << sq_norm(u, u_old);
         first_iteration = false;
     } while (sq_norm(u, u_old) > 0.00001);
 
@@ -271,6 +275,7 @@ void MainWindow::second_task()
 
     double max_u = u[0];
     double min_u = u[0];
+    //segment_ind = 0;
     for (int i = 0; i < n - 1; i++)
     {
         if (i >= nx[segment_ind + 1])
@@ -288,9 +293,9 @@ void MainWindow::second_task()
     series->append(L, u[n - 1]);
     series->setName("Температура");
 
-    double delta = max_u - min_u;
-    min_u -= 0.01 * delta;
-    max_u += 0.01 * delta;
+    //double delta = max_u - min_u;
+    //min_u -= 0.01 * delta;
+    //max_u += 0.01 * delta;
 
     double vals[3] = { s_L1, s_L2, L1 };
     chart->setTitle("Распределение температуры в прутке");
@@ -313,6 +318,7 @@ void MainWindow::second_task()
     QValueAxis *axisX = new QValueAxis;
     axisX->setLabelFormat("%g");
     axisX->setTitleText("X");
+    axisX->setTickCount(25);
     chart->addAxis(axisX, Qt::AlignBottom);
     series->attachAxis(axisX);
     for(int i = 0; i < 3; i++)
@@ -321,6 +327,7 @@ void MainWindow::second_task()
     QValueAxis *axisY = new QValueAxis;
     axisY->setLabelFormat("%g");
     axisY->setTitleText("Y");
+    axisY->setTickCount(25);
     chart->addAxis(axisY, Qt::AlignLeft);
     series->attachAxis(axisY);
     for(int i = 0; i < 3; i++)
