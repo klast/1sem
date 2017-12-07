@@ -152,8 +152,8 @@ void MainWindow::second_task()
     double s_L1 = s_l1 * L;
     double s_L2 = s_l2 * L;
 
-    double start_u = alpha_right * T_right;
-    int min_n = 10;
+    double start_u = T_right * alpha_right;
+    int min_n = 100;
 
     QVector<Condition> conds;
     conds.push_back(Condition(0, ConditionType::metal));
@@ -251,10 +251,10 @@ void MainWindow::second_task()
             if (first_iteration)
                 cout << i << " pos " << pos << " k " << left_k << " " << right_k << " dx " << left_dx << " " << right_dx << " s " << s_dx << endl;
 #endif
-            diag[i] = left_k / left_dx + right_k / right_dx;// - (10 + 2 * u_old[i]) * s_dx;
+            diag[i] = left_k / left_dx + right_k / right_dx;
             diag_up[i] = -right_k / right_dx;
             diag_down[i] = -left_k / left_dx;
-            rhs[i] = 6 + u_old[i] * s_dx;//(5 - u_old[i] * u_old[i]) * s_dx;
+            rhs[i] = -6 - u_old[i] * s_dx;
         }
         diag[0] = k_1 / dx[0];
         rhs[0] = q_left;
@@ -299,6 +299,9 @@ void MainWindow::second_task()
 
     double vals[3] = { s_L1, s_L2, L1 };
     chart->setTitle("Распределение температуры в прутке");
+    QFont font;
+    font.setPixelSize(24);
+    chart->setTitleFont(font);
 
     chart->addSeries(series);
     QVector<QLineSeries *> tmp(3);
@@ -318,7 +321,7 @@ void MainWindow::second_task()
     QValueAxis *axisX = new QValueAxis;
     axisX->setLabelFormat("%g");
     axisX->setTitleText("X");
-    axisX->setTickCount(25);
+    axisX->setTickCount(11);
     chart->addAxis(axisX, Qt::AlignBottom);
     series->attachAxis(axisX);
     for(int i = 0; i < 3; i++)
@@ -327,7 +330,7 @@ void MainWindow::second_task()
     QValueAxis *axisY = new QValueAxis;
     axisY->setLabelFormat("%g");
     axisY->setTitleText("Y");
-    axisY->setTickCount(25);
+    axisY->setTickCount(11);
     chart->addAxis(axisY, Qt::AlignLeft);
     series->attachAxis(axisY);
     for(int i = 0; i < 3; i++)
