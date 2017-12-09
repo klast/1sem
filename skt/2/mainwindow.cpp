@@ -2,7 +2,7 @@
 #include "ui_mainwindow.h"
 #include <algorithm>
 
-#include <Eigen/Dense>
+#include <Eigen/IterativeLinearSolvers>
 #include <Eigen/Core>
 
 using namespace Eigen;
@@ -13,7 +13,22 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    t = 0;
+    ui->pushButton->connect(ui->pushButton, SIGNAL(clicked(bool)), this, SLOT(make_step()));
+    colorMap = new QCPColorMap(ui->customPlot->xAxis, ui->customPlot->yAxis);
+    ui->customPlot->plotLayout()->insertRow(0);
+    ui->customPlot->plotLayout()->addElement(0, 0, new QCPTextElement(ui->customPlot, "Распределение температур", QFont("sans", 24, QFont::Bold)));
+    colorScale = new QCPColorScale(ui->customPlot);
+    ui->customPlot->plotLayout()->addElement(1, 1, colorScale);
+    //run();
+    //plot();
+}
+
+void MainWindow::make_step()
+{
     run();
+    plot();
+    t++;
 }
 
 double sq_norm(QVector<double> &a, QVector<double> &b)
@@ -22,7 +37,8 @@ double sq_norm(QVector<double> &a, QVector<double> &b)
     std::vector<double> tmp(a.size());
     std::transform(a.begin(), a.end(), b.begin(), tmp.begin(),
                    [](double &a1, double &a2){ return (a1 - a2) * (a1 - a2); });
-    return sqrt(std::accumulate(tmp.begin(), tmp.end(),0));
+    norm = std::accumulate(tmp.begin(), tmp.end(), 0);
+    return sqrt(norm);
 }
 
 void calc_dx(double & dx, double & x_start, int & n, Condition left, Condition right, double pref_dx, int pref_n = -1)
@@ -61,27 +77,35 @@ void calc_dx(double & dx, double & x_start, int & n, Condition left, Condition r
 
 void MainWindow::solve(QVector<double> &diag, QVector<double> &diag_up, QVector<double> &diag_down, QVector<double> &diag_left, QVector<double> &diag_right, QVector<double> &rhs)
 {
+    setNbThreads(8);
     int n_2 = diag.size();
     int n = sqrt(n_2);
-    MatrixXd a = MatrixXd::Zero(diag.size(), diag.size());
+    SparseMatrix<double> a(n_2, n_2);
+    BiCGSTAB<SparseMatrix<double>> solver;
+    typedef Triplet<double> T;
+    std::vector<T> tripletList;
     for(int i = 0; i < diag.size(); i++)
     {
-        a(i, i) = diag[i];
-        if(i % (n - 1) != 0)
-            a(i + 1, i) = diag_up[i];
+        tripletList.push_back(T(i, i, diag[i]));
+        if(i % (n - 1) != 0 || i == 0)
+            tripletList.push_back(T(i + 1, i, diag_up[i]));
         if(i % n != 0)
-            a(i - 1, i) = diag_down[i];
+            tripletList.push_back(T(i - 1, i, diag_down[i]));
     }
     for(int i = n; i < diag.size(); i++)
     {
-        a(i - n, i) = diag_left[i - n];
-        a(i, i - n) = diag_right[i];
+        tripletList.push_back(T(i - n, i, diag_left[i - n]));
+        tripletList.push_back(T(i, i - n, diag_right[i]));
     }
+    a.setFromTriplets(tripletList.begin(), tripletList.end());
+    solver.compute(a);
     qDebug() << "matrix filled";
     VectorXd rhs_solve = Map<VectorXd, Unaligned>(rhs.toStdVector().data(), rhs.toStdVector().size());
-
-    VectorXd u_solve = a.colPivHouseholderQr().solve(rhs_solve);
-
+    VectorXd u_solve(n);
+    solver.analyzePattern(a);
+    u_solve = solver.solve(rhs_solve);
+    qDebug() << "#iterations" << solver.iterations();
+    qDebug() << "estimated error" << solver.error();
     VectorXd::Map(&u[0], u_solve.size()) = u_solve;
 }
 
@@ -92,12 +116,12 @@ void MainWindow::run()
     double L = 0.125;
     double ksi = 1.15;
     double s_l1 = 0.5, s_l2 = 0.75;
-    double q_left = -3;
+    double q_left = 3;
     double alpha_right = 0.13;
     double T_right = 412;
 
-    double dt = 0.1;
-    int n_time_steps = 10;
+    double dt = 2;
+    int n_time_steps = 100;
 
     double L1 = L * ksi / (1.0 + ksi);
     double L2 = L - L1;
@@ -105,8 +129,8 @@ void MainWindow::run()
     double s_L1 = s_l1 * L;
     double s_L2 = s_l2 * L;
 
-    double start_u = T_right * alpha_right;
-    int min_n = 1;
+    double start_u = 295;
+    int min_n = 25;
 
     QVector<Condition> conds;
     conds.push_back(Condition(0, ConditionType::metal));
@@ -209,19 +233,20 @@ void MainWindow::run()
 
     /*MatrixXd a(n, n);
     a = MatrixXd::Zero(n, n)*/;
-    for(int t = 0; t < n_time_steps; t++)
+    //for(int t = 0; t < n_time_steps; t++)
     {
         double left_dx, right_dx, up_dy, down_dy;
         double left_k, right_k, up_k, down_k;
         double left, right, up, down, cur;
-        int index = 0;
-        std::copy(u.begin(), u.end(), u_old.begin());
+        int index = 0;        
         do
         {
+            std::copy(u.begin(), u.end(), u_old.begin());
             int i = 0;
             int j = 0;
             up_dy = dy[0];
             down_dy = dy[0];
+            segment_ind_y = 0;
             //! Проставим границы по [0;j]
             for(j = 1; j < num_y - 1; j++)
             {
@@ -239,30 +264,30 @@ void MainWindow::run()
                 up = up_k / up_dy;
                 down = down_k / down_dy;
                 index = i * num_y + j;
-                diag[index] = right + up + down;
+                diag[index] = right + up + down + t * dx[0] * dy[segment_ind_y] / dt;
                 diag_down[index] = -down;
                 diag_up[index] = -up;
                 diag_right[index] = -right;
                 diag_left[index] = 0;
-                rhs[index] = q_left / dx[0];
+                rhs[index] = u_old[index] * t * dx[0] * dy[segment_ind_y] / dt + q_left / dx[0];
             }
             //! [0;0]
             index = 0;
-            diag[0] = k[0][1] / dy[0] + k[1][0] / dx[0];
+            diag[0] = k[0][1] / dy[0] + k[1][0] / dx[0] + t * dx[0] * dy[0] / dt;
             diag_up[0] = - k[0][1] / dy[0];
             diag_right[0] = -k[1][0] / dx[0];
             diag_down[0] = 0;
             diag_left[0] = 0;
-            rhs[0] = q_left / dx[0];
+            rhs[0] = u_old[0] * t * dx[0] * dy[0] / dt +  q_left / dx[0];
 
             //![0; num_y-1]
             index = num_y - 1;
-            diag[index] = k[0][index-1] / dy[dy.size() - 1] + k[1][index] / dx[0];
+            diag[index] = k[0][index-1] / dy[dy.size() - 1] + k[1][index] / dx[0] + t * dx[0] * dy[dy.size() - 1] / dt;
             diag_down[index] = -k[0][index-1] / dy[dy.size() - 1];
             diag_right[index] = -k[1][index] / dx[0];
             diag_up[index] = 0;
             diag_left[index] = 0;
-            rhs[index] = q_left / dx[0];
+            rhs[index] = u_old[index] * t * dx[0] * dy[0] / dt + q_left / dx[0];
 
             i = num_x - 1;
             //! Проставим границы по [num_x-1;j]
@@ -282,38 +307,40 @@ void MainWindow::run()
                 up = up_k / up_dy;
                 down = down_k / down_dy;
                 index = i * num_y + j;
-                diag[index] = left + up + down + alpha_right;
+                diag[index] = left + up + down + t * dx[dx.size() - 1] * dy[segment_ind_y] / dt + alpha_right;
                 diag_down[index] = -down;
                 diag_up[index] = -up;
                 diag_right[index] = 0;
                 diag_left[index] = -left;
-                rhs[index] = alpha_right * T_right;
+                rhs[index] = u_old[index] * t * dx[dx.size() - 1] * dy[segment_ind_y] / dt + alpha_right * T_right ;
             }
             //! [num_x-1;0]
             i = num_x - 1;
             index = i * num_y;
-            diag[index] = k[i][1] / dy[0] + k[i - 1][0] / dx[dx.size() - 1];
+            diag[index] = k[i][1] / dy[0] + k[i - 1][0] / dx[dx.size() - 1] + t * dx[dx.size() - 1] * dy[0] / dt;
             diag_up[index] = -k[i][1] / dy[0];
             diag_left[index] = -k[i - 1][0] / dx[dx.size() - 1];
             diag_down[index] = 0;
             diag_right[index] = 0;
-            rhs[index] = alpha_right * T_right;
+            rhs[index] = u_old[index] * t * dx[dx.size() - 1] * dy[0] / dt + alpha_right * T_right;
 
             //![num_x - 1; num_y-1]
             j = num_y - 1;
             index = (i) * num_y + j;
-            diag[index] = k[i][j - 1] / dy[dy.size() - 1] + k[i - 1][j] / dx[dx.size() - 1];
+            diag[index] = k[i][j - 1] / dy[dy.size() - 1] + k[i - 1][j] / dx[dx.size() - 1] + t * dx[dx.size() - 1] * dy[dy.size() - 1] / dt;
             diag_down[index] = -k[i][j-1] / dy[dy.size() - 1];
             diag_left[index] = -k[i - 1][j] / dx[dx.size() - 1];
             diag_up[index] = 0;
             diag_right[index] = 0;
-            rhs[0] = alpha_right * T_right;
+            rhs[index] = u_old[index] * t * dx[dx.size() - 1] * dy[dy.size() - 1] / dt + alpha_right * T_right;
 
             //! Теперь внутри
             left_dx = dx[0];
             right_dx = dx[0];
+            segment_ind_x = 0;
             for(i = 1; i < num_x - 1; i++)
             {
+                segment_ind_y = 0;
                 if(i >= nx[segment_ind_x + 1])
                     segment_ind_x++;
                 pos_x = x_start[segment_ind_x] + dx[segment_ind_x] * (i - nx[segment_ind_x]);
@@ -321,6 +348,7 @@ void MainWindow::run()
                     left_dx = dx[segment_ind_x - 1];
                 if(i == nx[segment_ind_x + 1])
                     right_dx = dx[segment_ind_x + 1];
+                j = 0;
                 index = i * num_y + j;
                 left_k = k[i-1][0];
                 right_k = k[i+1][0];
@@ -331,7 +359,7 @@ void MainWindow::run()
                 up = up_k / up_dy;
                 //! граница по
                 rhs[index] = 0;
-                diag[index] = left + right + up;
+                diag[index] = left + right + up + t * dx[segment_ind_x] * dy[0] / dt;
                 diag_up[index] = -up;
                 diag_down[index] = 0;
                 diag_left[index] = -left;
@@ -360,7 +388,7 @@ void MainWindow::run()
                     right = right_k / right_dx;
                     up = up_k / up_dy;
                     down = down_k / down_dy;
-                    cur = ((right_dx + left_dx + up_dy + down_dy) / 4.0) / dt;
+                    cur = t * dx[segment_ind_x] * dy[segment_ind_y] / dt;
 
                     int index = i * num_y + j;
                     diag[index] = cur + left + right + up + down + s_dx * s_dy;
@@ -382,7 +410,7 @@ void MainWindow::run()
                 down = down_k / down_dy;
                 //! граница по
                 rhs[index] = 0;
-                diag[index] = left + right + down;
+                diag[index] = left + right + down + t * dx[segment_ind_x] * dy[segment_ind_y] / dt;
                 diag_up[index] = 0;
                 diag_down[index] = -down;
                 diag_left[index] = -left;
@@ -390,9 +418,43 @@ void MainWindow::run()
             }
             qDebug() << "Beginning to calc";
             solve(diag, diag_up, diag_down, diag_left, diag_right, rhs);
-            qDebug() << "\t" << sq_norm(u, u_old);
-        }while ( sq_norm(u, u_old) > 0.00001 );
+            qDebug() << "\t" << sq_norm(u, u_old) << u[0] << u[1] << u[2];
+        }while ( sq_norm(u, u_old) > 0.01 );
+        qDebug() << "iter ended";
     }
+}
+
+void MainWindow::plot()
+{
+    ui->customPlot->replot();
+    ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+    ui->customPlot->axisRect()->setupFullAxesBox(true);
+    ui->customPlot->xAxis->setLabel("X");
+    ui->customPlot->yAxis->setLabel("Y");
+    int n_2 = u.size();
+    int n = sqrt(n_2);
+    double min = *std::min_element(u.begin(), u.end());
+    double max = *std::max_element(u.begin(), u.end());
+    colorMap->data()->setSize(n, n);
+    colorMap->setInterpolate(false);
+    colorMap->data()->setRange(QCPRange(0, 0.125), QCPRange(0, 0.125));
+    for(int x = 0; x < n; x++)
+    {
+        for(int y = 0; y < n; y++)
+        {
+            colorMap->data()->setCell(x, y, u[x*n+y]);
+        }
+    }
+    colorScale->setType(QCPAxis::atRight);
+    colorMap->setColorScale(colorScale);
+    colorScale->axis()->setLabel("Температура");
+    colorMap->setGradient(QCPColorGradient::gpHot);
+    colorMap->rescaleDataRange(true);
+    QCPMarginGroup * marginGroup = new QCPMarginGroup(ui->customPlot);
+    ui->customPlot->axisRect()->setMarginGroup(QCP::msBottom|QCP::msTop, marginGroup);
+    colorScale->setMarginGroup(QCP::msBottom|QCP::msTop, marginGroup);
+    ui->customPlot->rescaleAxes();
+    ui->customPlot->replot();
 }
 
 MainWindow::~MainWindow()

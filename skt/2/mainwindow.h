@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QDebug>
+#include "QCustomPlot/qcustomplot.h"
 
 namespace Ui {
 class MainWindow;
@@ -56,10 +57,15 @@ public:
     ~MainWindow();
     void run();
     void solve(QVector<double> &diag, QVector<double> &diag_up, QVector<double> &diag_down, QVector<double> &diag_left, QVector<double> &diag_right, QVector<double> &rhs);
-
+    void plot();
+private slots:
+    void make_step();
 private:
+    int t;
     Ui::MainWindow *ui;
     QVector<double> u;
+    QCPColorMap *colorMap;
+    QCPColorScale * colorScale;
 };
 
 #endif // MAINWINDOW_H
