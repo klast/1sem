@@ -55,9 +55,11 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void run();
+    void solve(QVector<double> &diag, QVector<double> &diag_up, QVector<double> &diag_down, QVector<double> &diag_left, QVector<double> &diag_right, QVector<double> &rhs);
 
 private:
     Ui::MainWindow *ui;
+    QVector<double> u;
 };
 
 #endif // MAINWINDOW_H

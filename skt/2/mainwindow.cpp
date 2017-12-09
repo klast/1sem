@@ -59,6 +59,32 @@ void calc_dx(double & dx, double & x_start, int & n, Condition left, Condition r
         x_start += dx / 2.0;
 }
 
+void MainWindow::solve(QVector<double> &diag, QVector<double> &diag_up, QVector<double> &diag_down, QVector<double> &diag_left, QVector<double> &diag_right, QVector<double> &rhs)
+{
+    int n_2 = diag.size();
+    int n = sqrt(n_2);
+    MatrixXd a = MatrixXd::Zero(diag.size(), diag.size());
+    for(int i = 0; i < diag.size(); i++)
+    {
+        a(i, i) = diag[i];
+        if(i % (n - 1) != 0)
+            a(i + 1, i) = diag_up[i];
+        if(i % n != 0)
+            a(i - 1, i) = diag_down[i];
+    }
+    for(int i = n; i < diag.size(); i++)
+    {
+        a(i - n, i) = diag_left[i - n];
+        a(i, i - n) = diag_right[i];
+    }
+    qDebug() << "matrix filled";
+    VectorXd rhs_solve = Map<VectorXd, Unaligned>(rhs.toStdVector().data(), rhs.toStdVector().size());
+
+    VectorXd u_solve = a.colPivHouseholderQr().solve(rhs_solve);
+
+    VectorXd::Map(&u[0], u_solve.size()) = u_solve;
+}
+
 void MainWindow::run()
 {
     double k_1 = 110;
@@ -80,7 +106,7 @@ void MainWindow::run()
     double s_L2 = s_l2 * L;
 
     double start_u = T_right * alpha_right;
-    int min_n = 100;
+    int min_n = 1;
 
     QVector<Condition> conds;
     conds.push_back(Condition(0, ConditionType::metal));
@@ -131,7 +157,6 @@ void MainWindow::run()
     int num_x = nx[nx.size() - 1];
     int num_y = num_x;
     int n = num_x * num_y;
-    QVector<double> u(n);
     QVector<double> u_old(n);
     u.resize(n);
     std::fill(u.begin(), u.end(), start_u);
@@ -146,10 +171,11 @@ void MainWindow::run()
     double min_L = std::min(s_L1, s_L2);
     double max_L = std::max(s_L1, s_L2);
     double max_k = std::max(k_1, k_2);
+    qDebug() << "Calc k matrix";
     for(int i = 0; i < num_x; i++)
     {
         std::vector<double> tmp(num_y, k_1);
-        k.push_back(tmp);
+        k[i] = tmp;
         if(i >= nx[segment_ind_x + 1])
             segment_ind_x++;
         for(int j = 0; j < num_y; j++)
@@ -194,11 +220,98 @@ void MainWindow::run()
         {
             int i = 0;
             int j = 0;
+            up_dy = dy[0];
+            down_dy = dy[0];
             //! Проставим границы по [0;j]
             for(j = 1; j < num_y - 1; j++)
             {
-
+                if(j >= ny[segment_ind_y + 1])
+                    segment_ind_y++;
+                if(j == ny[segment_ind_y])
+                    down_dy = dy[segment_ind_y - 1];
+                if(j == ny[segment_ind_y + 1])
+                    up_dy = dy[segment_ind_y + 1];
+                right_k = k[1][j];
+                up_k = k[0][j + 1];
+                down_k = k[0][j - 1];
+                right_dx = dx[0];
+                right = right_k / right_dx;
+                up = up_k / up_dy;
+                down = down_k / down_dy;
+                index = i * num_y + j;
+                diag[index] = right + up + down;
+                diag_down[index] = -down;
+                diag_up[index] = -up;
+                diag_right[index] = -right;
+                diag_left[index] = 0;
+                rhs[index] = q_left / dx[0];
             }
+            //! [0;0]
+            index = 0;
+            diag[0] = k[0][1] / dy[0] + k[1][0] / dx[0];
+            diag_up[0] = - k[0][1] / dy[0];
+            diag_right[0] = -k[1][0] / dx[0];
+            diag_down[0] = 0;
+            diag_left[0] = 0;
+            rhs[0] = q_left / dx[0];
+
+            //![0; num_y-1]
+            index = num_y - 1;
+            diag[index] = k[0][index-1] / dy[dy.size() - 1] + k[1][index] / dx[0];
+            diag_down[index] = -k[0][index-1] / dy[dy.size() - 1];
+            diag_right[index] = -k[1][index] / dx[0];
+            diag_up[index] = 0;
+            diag_left[index] = 0;
+            rhs[index] = q_left / dx[0];
+
+            i = num_x - 1;
+            //! Проставим границы по [num_x-1;j]
+            for(j = 1; j < num_y - 1; j++)
+            {
+                if(j >= ny[segment_ind_y + 1])
+                    segment_ind_y++;
+                if(j == ny[segment_ind_y])
+                    down_dy = dy[segment_ind_y - 1];
+                if(j == ny[segment_ind_y + 1])
+                    up_dy = dy[segment_ind_y + 1];
+                left_k = k[i - 1][j];
+                up_k = k[i][j + 1];
+                down_k = k[i][j - 1];
+                left_dx = dx[dx.size() - 1];
+                left = left_k / left_dx;
+                up = up_k / up_dy;
+                down = down_k / down_dy;
+                index = i * num_y + j;
+                diag[index] = left + up + down + alpha_right;
+                diag_down[index] = -down;
+                diag_up[index] = -up;
+                diag_right[index] = 0;
+                diag_left[index] = -left;
+                rhs[index] = alpha_right * T_right;
+            }
+            //! [num_x-1;0]
+            i = num_x - 1;
+            index = i * num_y;
+            diag[index] = k[i][1] / dy[0] + k[i - 1][0] / dx[dx.size() - 1];
+            diag_up[index] = -k[i][1] / dy[0];
+            diag_left[index] = -k[i - 1][0] / dx[dx.size() - 1];
+            diag_down[index] = 0;
+            diag_right[index] = 0;
+            rhs[index] = alpha_right * T_right;
+
+            //![num_x - 1; num_y-1]
+            j = num_y - 1;
+            index = (i) * num_y + j;
+            diag[index] = k[i][j - 1] / dy[dy.size() - 1] + k[i - 1][j] / dx[dx.size() - 1];
+            diag_down[index] = -k[i][j-1] / dy[dy.size() - 1];
+            diag_left[index] = -k[i - 1][j] / dx[dx.size() - 1];
+            diag_up[index] = 0;
+            diag_right[index] = 0;
+            rhs[0] = alpha_right * T_right;
+
+            //! Теперь внутри
+            left_dx = dx[0];
+            right_dx = dx[0];
             for(i = 1; i < num_x - 1; i++)
             {
                 if(i >= nx[segment_ind_x + 1])
@@ -255,7 +368,7 @@ void MainWindow::run()
                     diag_right[index] = -right;
                     diag_up[index] = -up;
                     diag_down[index] = -down;
-                    rhs[index] = this_ * u_old[index] + 6 * s_dx * s_dy;
+                    rhs[index] = cur * u_old[index] + 6 * s_dx * s_dy;
                 }
                 j = num_y - 1;
                 index = i * num_y + j;
@@ -275,6 +388,9 @@ void MainWindow::run()
                 diag_left[index] = -left;
                 diag_right[index] = -right;
             }
+            qDebug() << "Beginning to calc";
+            solve(diag, diag_up, diag_down, diag_left, diag_right, rhs);
+            qDebug() << "\t" << sq_norm(u, u_old);
         }while ( sq_norm(u, u_old) > 0.00001 );
     }
 }
