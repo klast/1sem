@@ -116,11 +116,11 @@ void MainWindow::run()
     double L = 0.125;
     double ksi = 1.15;
     double s_l1 = 0.5, s_l2 = 0.75;
-    double q_left = 3;
+    double q_left = -3;
     double alpha_right = 0.13;
     double T_right = 412;
 
-    double dt = 2;
+    double dt = 1000;
     int n_time_steps = 100;
 
     double L1 = L * ksi / (1.0 + ksi);
@@ -130,7 +130,7 @@ void MainWindow::run()
     double s_L2 = s_l2 * L;
 
     double start_u = 295;
-    int min_n = 25;
+    int min_n = 100;
 
     QVector<Condition> conds;
     conds.push_back(Condition(0, ConditionType::metal));
@@ -269,7 +269,7 @@ void MainWindow::run()
                 diag_up[index] = -up;
                 diag_right[index] = -right;
                 diag_left[index] = 0;
-                rhs[index] = u_old[index] * t * dx[0] * dy[segment_ind_y] / dt + q_left / dx[0];
+                rhs[index] = u_old[index] * t * dx[0] * dy[segment_ind_y] / dt + q_left;
             }
             //! [0;0]
             index = 0;
@@ -278,7 +278,7 @@ void MainWindow::run()
             diag_right[0] = -k[1][0] / dx[0];
             diag_down[0] = 0;
             diag_left[0] = 0;
-            rhs[0] = u_old[0] * t * dx[0] * dy[0] / dt +  q_left / dx[0];
+            rhs[0] = u_old[0] * t * dx[0] * dy[0] / dt +  q_left;
 
             //![0; num_y-1]
             index = num_y - 1;
@@ -287,7 +287,7 @@ void MainWindow::run()
             diag_right[index] = -k[1][index] / dx[0];
             diag_up[index] = 0;
             diag_left[index] = 0;
-            rhs[index] = u_old[index] * t * dx[0] * dy[0] / dt + q_left / dx[0];
+            rhs[index] = u_old[index] * t * dx[0] * dy[0] / dt + q_left;
 
             i = num_x - 1;
             //! Проставим границы по [num_x-1;j]
@@ -358,7 +358,7 @@ void MainWindow::run()
                 right = right_k / right_dx;
                 up = up_k / up_dy;
                 //! граница по
-                rhs[index] = 0;
+                rhs[index] = u_old[index] * t * dx[segment_ind_x] * dy[0] / dt;
                 diag[index] = left + right + up + t * dx[segment_ind_x] * dy[0] / dt;
                 diag_up[index] = -up;
                 diag_down[index] = 0;
@@ -391,7 +391,7 @@ void MainWindow::run()
                     cur = t * dx[segment_ind_x] * dy[segment_ind_y] / dt;
 
                     int index = i * num_y + j;
-                    diag[index] = cur + left + right + up + down + s_dx * s_dy;
+                    diag[index] = cur + left + right + up + down - s_dx * s_dy;
                     diag_left[index] = -left;
                     diag_right[index] = -right;
                     diag_up[index] = -up;
@@ -409,7 +409,7 @@ void MainWindow::run()
                 right = right_k / right_dx;
                 down = down_k / down_dy;
                 //! граница по
-                rhs[index] = 0;
+                rhs[index] = u_old[index] * t * dx[segment_ind_x] * dy[segment_ind_y] / dt;
                 diag[index] = left + right + down + t * dx[segment_ind_x] * dy[segment_ind_y] / dt;
                 diag_up[index] = 0;
                 diag_down[index] = -down;
