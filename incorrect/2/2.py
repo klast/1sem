@@ -13,18 +13,18 @@ from scipy.special import gamma
 import matplotlib.pyplot as plt
 import random
 
-epsilon = 1e-3
-N = 100
+epsilon = 1e-6
+N = 20
 a = 0.
 b = math.pi
 c = 5
 d = 6
-numStepT = 100
-numStepS = 100
+numStepT = 20
+numStepS = 20
 deltaT = (d-c)/numStepT
 deltaS = (b-a)/numStepS
-t = np.arange(c, d, deltaT)
-s = np.arange(a, b, deltaS)
+t = np.arange(c, d+deltaT, deltaT)
+s = np.arange(a, b+deltaS, deltaS)
 theta = np.random.uniform(-1, 1, t.shape[0])
 alpha=1e-8
 sigma = 1e-4
@@ -78,8 +78,8 @@ def u_approx(t, theta):
     return u(t) * (1 + epsilon*theta)
 
 def I_approx(z_s):
-    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT)]
-    KA_ts = [[K(t[i],s[j],z_s[j]) for j in range(numStepS)] for i in range(numStepT)]
+    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT+1)]
+    KA_ts = [[K(t[i],s[j],z_s[j]) for j in range(numStepS+1)] for i in range(numStepT+1)]
     two = intS(KA_ts)-uA_t
     three = np.power(two, 2)
     result = intT1D(three)
@@ -89,40 +89,39 @@ def L_delta(z_s):
     return I_approx(z_s) + myPsi(z_s)
 
 def find_lambda_delta(z_s):
-    bounds = [(-10, 10) for i in range(numStepS)]
-    lambda_delta = sc.differential_evolution(L_delta, bounds, tol=1e-5)
+    lambda_delta = sc.minimize(L_delta, np.ones(N+1))
     return L_delta(lambda_delta.x)
 
 def rho(z_alpha):
-    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT)]
-    KA_ts = [[K(t[i],s[j],z_alpha[j]) for j in range(numStepS)] for i in range(numStepT)]
+    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT+1)]
+    KA_ts = [[K(t[i],s[j],z_alpha[j]) for j in range(numStepS+1)] for i in range(numStepT+1)]
     two = intS(KA_ts) - uA_t
     three = np.power(two, 2)
     result = intT1D(three) - lambda_delta - myPsi(z_alpha)
     return result
     
 def M_alpha_delta(z_s):
-    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT)]
-    KA_ts = [[K(t[i],s[j],z_s[j]) for j in range(numStepS)] for i in range(numStepT)]
+    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT+1)]
+    KA_ts = [[K(t[i],s[j],z_s[j]) for j in range(numStepS+1)] for i in range(numStepT+1)]
     two = intS(KA_ts) - uA_t
-    three = np.zeros(two, 2)
+    three = np.power(two, 2)
     res1=intT1D(three)
     result = res1 + alpha*intS1D(np.power(z_s,2))
     return result
 
 def DM_alpha_delta(z_s):
-    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT)]
-    KA_ts = [[K(t[i],s[j],z_s[j]) for j in range(numStepS)] for i in range(numStepT)]
-    DK_txi = [[dKdz(t[i],s[j],z_s[j]) for j in range(numStepS)] for i in range(numStepT)]
+    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT+1)]
+    KA_ts = [[K(t[i],s[j],z_s[j]) for j in range(numStepS+1)] for i in range(numStepT+1)]
+    DK_txi = [[dKdz(t[i],s[j],z_s[j]) for j in range(numStepS+1)] for i in range(numStepT+1)]
     two = intS(KA_ts) - uA_t
-    One = [[DK_txi[i][j]*two[i] for j in range(numStepS)] for i in range(numStepT)]
+    One = [[DK_txi[i][j]*two[i] for j in range(numStepS+1)] for i in range(numStepT+1)]
     result = 2*intT2D(One) + 2*alpha*z_s
     return result
 
 def IterationProcess():
     z_k = 2*s/math.pi
-    zbrs = z(s)
-    z_k[0] = zbrs[0]
+    zbrs = [z(i) for i in s]
+    #z_k[0] = zbrs[0]
     z_k_init = z_k.copy()
     M_new = 0
     M_old = M_alpha_delta(z_k)
@@ -138,36 +137,54 @@ def IterationProcess():
 
 #начнем искать alpha
 B = myB()
-beta = 0
+beta = 5.
 alpha = 0
 alphaBegin = 0
-alphaEnd = 0.1
+alphaEnd = 1
 temp = 1
 z_alpha = [z(i) for i in s]
 lambda_delta = find_lambda_delta(z_alpha)
+print("lambda_delta", lambda_delta)
+
 while True:
     alpha = (alphaBegin + alphaEnd) / 2
     z_alpha = IterationProcess()
     temp = rho(z_alpha)
-    print("alpha " + alpha + " rho " + temp)
+    print("alpha " + str(alpha) + " rho " + str(temp))
     
     if abs(temp) < 1e-6:
         break
     
-    if temp>0:
+    if temp<0:
         alphaEnd = alpha
     else:
         alphaBegin = alpha
         
+alpha_arr = np.arange(0.1732,0.1733, 1e-6)
+temp_arr = []
+for al in alpha_arr:
+    alpha = al
+    z_alpha = IterationProcess()
+    temp = rho(z_alpha)
+    temp_arr.append(temp)
+    
+plt.plot(alpha_arr, temp_arr)
+plt.show()
+    
+        
 z_k = 2*s/math.pi
-zbrs = z(s)
-z_k[0] = zbrs[0]
+zbrs = [z(i) for i in s]
+#z_k[0] = zbrs[0]
 z_k_init = z_k
 M_new = 0
 M_old = M_alpha_delta(z_k)
-for i in range(N):
-    print("i ", i)
+i=1
+while False:
+    #print("i ", i)
+    i = i + 1
     z_k_1 = z_k - beta * DM_alpha_delta(z_k)
     M_new = M_alpha_delta(z_k_1)
     z_k = z_k_1
+    if (abs(M_old-M_new) < 1e-7):
+       break 
     M_old = M_new
