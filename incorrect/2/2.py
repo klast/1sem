@@ -1,234 +1,173 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jan  5 15:14:12 2018
 
-# coding: utf-8
-
-
-
+@author: spelevova
+"""
 import numpy as np
 import math
-from scipy.optimize import  minimize
+import scipy.optimize as sc
 from numpy import linalg
 from scipy.integrate import trapz
 from scipy.special import gamma
 import matplotlib.pyplot as plt
 import random
 
-
-
-
-N = 20
+epsilon = 1e-3
+N = 100
 a = 0.
 b = math.pi
 c = 5
 d = 6
+numStepT = 100
+numStepS = 100
+deltaT = (d-c)/numStepT
+deltaS = (b-a)/numStepS
+t = np.arange(c, d, deltaT)
+s = np.arange(a, b, deltaS)
+theta = np.random.uniform(-1, 1, t.shape[0])
 alpha=1e-8
 sigma = 1e-4
-h=1e-4
-#h=0.00018
-#ck=1
+h=0
+sigma = epsilon*2
 ck = 0.02986315562
-#cn=0.25
-cn = -0.035714285714
+cu = -0.035714285714
 
+def intS1D(Z1D):
+    return np.sum(Z1D)*deltaS
 
+def intT1D(K1D):
+    return np.sum(K1D)*deltaT
 
+def intT2D(K):
+    return np.sum(K)*deltaT
 
-s = np.arange(a, b+(b-a)/N, (b-a)/N)
-solution = []
-for i in range(0,N+1):
-    solution.append(2*math.cos(s[i]))
-t = np.arange(c, d+(d-c)/N, (d-c)/N)
+def intS(K):
+    return (np.sum(K,1)*deltaS).transpose()
 
+def u(t):
+    return (math.pi / (t*t-4)**0.5) * (((t*t-4)**0.5 - t) / 2.)**2
 
+def z(s):
+    return 2 * math.cos(s)
 
+def K(t, s, z_s):
+    return math.cos(2*s)/(t + z_s)
 
-def K(s,t,z):
-    #return (1. - s) / ((t + z) ** 3)
-    #return (1.)/((1+t*z)**2)
-    #return z**t
-    return math.cos(2*s) / (t+z)
-
-def dKdz(s,t,z):
+def dKdz(t, s, z_s):
     #return 3 * (s - 1.) / ((t + z) ** 4)
     #return (-2.*t)/((1+t*z)**3)
     #return 3*(s-1.)/((t+z)**4)
-    if (z != 0 ):
+    if (z_s != 0 ):
         #result = t*(z**(t-1))
-        result = (z*t-2) / (t+z)**2
-    if (z == 0):
+        result = (z_s*t-2) / (t+z_s)**2
+    if (z_s == 0):
         result = 0
    # print ("t = ", t, "Z=", z, "res = ", result)
     return result
 
-def u(t):
-    #return (math.pi)/((1-t**2)**(1.5))
-    #return 1./(2*t*t*(1+t))
-    #return ((math.pi)/2)*(gamma((t+1)/2)/gamma(t/2 + 1))
-    return (math.pi / (t*t-4)**0.5) * ((t*t-4)**0.5 - t)**2 
+def myPsi(z_s):
+    result = B*(b-a)*(b-a+1)*(1+intS1D(np.power(z_s,2)))
+    return result
 
+def myB():
+    result = h * h*(h+2*ck)*(d-c)+((sigma*(h+2*ck)+h*(sigma+2*cu))*(d-c))/(b-a)+(sigma*(sigma+2*cu)*(d-c))/(b-a)**2;
+    return result
 
+def u_approx(t, theta):
+    return u(t) * (1 + epsilon*theta)
 
-def dz(z):
-    dz=np.zeros(N+1)
-    for i in range(1,N):
-        _s = s[i] - (b-a)/(2*N)
-        s_ = s[i] + (b-a)/(2*N)
-        _z = z[i-1] + (z[i]-z[i-1])*(_s-s[i-1])/(s[i]-s[i-1])
-        z_ = z[i+1] + (z[i]-z[i+1])*(s_-s[i+1])/(s[i]-s[i+1])
-        dz[i] = (z_ - _z)
-    _s = s[0] - (b-a)/(2*N)
-    s_ = s[0] + (b-a)/(2*N)
-    _z = z[1] + (z[0]-z[1])*(_s-s[1])/(s[0]-s[1])
-    z_ = z[1] + (z[0]-z[1])*(s_-s[1])/(s[0]-s[1])
-    dz[0] = (z_ - _z)
-    _s = s[N] - (b-a)/(2*N)
-    s_ = s[N] + (b-a)/(2*N)
-    _z = z[N-1] + (z[N]-z[N-1])*(_s-s[N-1])/(s[N]-s[N-1])
-    z_ = z[N-1] + (z[N]-z[N-1])*(s_-s[N-1])/(s[N]-s[N-1])
-    dz[N] = (z_ - _z)
-    return dz*N/(b - a)
+def I_approx(z_s):
+    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT)]
+    KA_ts = [[K(t[i],s[j],z_s[j]) for j in range(numStepS)] for i in range(numStepT)]
+    two = intS(KA_ts)-uA_t
+    three = np.power(two, 2)
+    result = intT1D(three)
+    return result    
 
-def integral(f,a_,b_):
-    s = 0
-    for i in range(0,N):
-        s = s + f[i+1] + f[i]
-    return s*(b_ - a_)/(2*N)
+def L_delta(z_s):
+    return I_approx(z_s) + myPsi(z_s)
 
-def Ur(z,t):
-    a1 = integral(z**t,a,b) - (1/N)*random.uniform(0,1)*1e-4
-    return a1
+def find_lambda_delta(z_s):
+    bounds = [(-10, 10) for i in range(numStepS)]
+    lambda_delta = sc.differential_evolution(L_delta, bounds, tol=1e-5)
+    return L_delta(lambda_delta.x)
 
-def omega(z, a, b):
-    f = z**2 + dz(z)**2
-    return integral(f,a,b)
+def rho(z_alpha):
+    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT)]
+    KA_ts = [[K(t[i],s[j],z_alpha[j]) for j in range(numStepS)] for i in range(numStepT)]
+    two = intS(KA_ts) - uA_t
+    three = np.power(two, 2)
+    result = intT1D(three) - lambda_delta - myPsi(z_alpha)
+    return result
+    
+def M_alpha_delta(z_s):
+    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT)]
+    KA_ts = [[K(t[i],s[j],z_s[j]) for j in range(numStepS)] for i in range(numStepT)]
+    two = intS(KA_ts) - uA_t
+    three = np.zeros(two, 2)
+    res1=intT1D(three)
+    result = res1 + alpha*intS1D(np.power(z_s,2))
+    return result
 
-def psi(z):
-    B = h*(h+2*ck)*(d-c)+(sigma*(h+2*ck)+h*(sigma+2*cn))*(d-c)/(b-a) + sigma*(sigma+2*cn)*(d-c)/((b-a)**2)
-    B_ = B*(b-a)*(b-a+1)
-    return B_*(1 + omega(z,a,b))
+def DM_alpha_delta(z_s):
+    uA_t = [u_approx(t[i], theta[i]) for i in range(numStepT)]
+    KA_ts = [[K(t[i],s[j],z_s[j]) for j in range(numStepS)] for i in range(numStepT)]
+    DK_txi = [[dKdz(t[i],s[j],z_s[j]) for j in range(numStepS)] for i in range(numStepT)]
+    two = intS(KA_ts) - uA_t
+    One = [[DK_txi[i][j]*two[i] for j in range(numStepS)] for i in range(numStepT)]
+    result = 2*intT2D(One) + 2*alpha*z_s
+    return result
 
-def J(z):
-    kk = np.zeros(N+1)
-    intk = np.zeros(N+1)
-    for i in range(0,N+1):
-        for j in range(0,N+1):
-            kk[j] = K(s[j], t[i], z[j])
-        intk[i] = (integral(kk, a, b) - U[i])**2
-    return integral(intk, c, d)
+def IterationProcess():
+    z_k = 2*s/math.pi
+    zbrs = z(s)
+    z_k[0] = zbrs[0]
+    z_k_init = z_k.copy()
+    M_new = 0
+    M_old = M_alpha_delta(z_k)
+    
+    
+    for i in range(N):
+        z_k_1 = z_k - beta * DM_alpha_delta(z_k)
+        M_new = M_alpha_delta(z_k_1)
+        z_k = z_k_1
+        M_old=M_new
+    result = z_k
+    return result
 
-def M(z, alpha):
-    return J(z) + alpha*omega(z,a,b)
-
-def rho(z):
-    return J(z) - psi(z)
-
-def gradM(z, alpha):
-    f = z - dz(dz(z))
-    kk = np.zeros((N+1,N+1))
-    ii = np.zeros(N+1)
-    dk = np.zeros(N+1)
-    intk = np.zeros(N+1)
-    for i in range(0,N+1):
-        for j in range(0,N+1):
-            kk[i][j] = K(s[j], t[i], z[j])
-        ii[i] = integral(kk[i], a, b) - U[i]
-    for k in range(0,N+1):
-        for i in range(0,N+1):
-            intk[i] = dKdz(s[k], t[i], z[k])*ii[i]
-        dk[k] = integral(intk, c, d)
-    return 2*dk + alpha*f
-
-def my_solve(A_approx, U_approx, ld, h, sigma):
-    B = np.dot(A_approx.T, u_approx)
-    A_k = np.dot(A_approx.T, A_approx)
-    alpha_0 = 1e-10
-    alpha_n = 1000
-    alpha = 1
-    ZAlpha = np.linalg.solve(A_k + alpha_0 * np.eye(n), B)
-    left_rho = rho(A_approx, ZAlpha, u_approx, ld)
-    ZAlpha = np.linalg.solve(A_k + alpha_n * np.eye(n), B)
-    right_rho = rho(A_approx, ZAlpha, u_approx, ld)
-
-    while abs(right_rho) >= 1e-8 and abs(left_rho) >= 1e-8:
-        alpha = (alpha_0 + alpha_n) / 2
-        ZAlpha = np.linalg.solve(A_k + alpha * np.eye(n), B)
-        mid_rho = rho(A_approx, ZAlpha, u_approx, ld)
-        if np.sign(mid_rho) != np.sign(right_rho):
-            left_rho = mid_rho
-            alpha_0 = alpha
-        elif np.sign(mid_rho) != np.sign(left_rho):
-            right_rho = mid_rho
-            alpha_n = alpha
-        else:
-            print("ERROR")
-    return [alpha, ZAlpha, mid_rho]
-
-
-U = u(t)
-z = np.ones(N+1)
-beta=1.
-i=0
-ii=0
-alpha_begin = 0
-alpha_end = 1000
-alpha = 2000
+#начнем искать alpha
+B = myB()
+beta = 0
+alpha = 0
+alphaBegin = 0
+alphaEnd = 0.1
+temp = 1
+z_alpha = [z(i) for i in s]
+lambda_delta = find_lambda_delta(z_alpha)
 while True:
-    #alpha = (alpha_begin + alpha_end)* 0.5
-    #print("alpha = ", alpha)
-    z = np.ones(N + 1)
-    i=0
-    beta = 0.1
-    while (linalg.norm(gradM(z,alpha))>1e-5):
-        print(i, alpha, linalg.norm(gradM(z,alpha)))
-        beta = 0.00001
-        i = i + 1
-        z_ = z-beta*gradM(z, alpha)
-        z_[0] = 2
-        z_[N] = -2
-        #print(z_)
-        #print("z_ = ", z_)
-        while(M(z_, alpha)>M(z, alpha)):
-            beta=beta/2
-            z_ = z-beta*gradM(z, alpha)
-            z_[0] = 2
-            z_[N] = -2
-            if (beta<1e-10):
-                break
-        if (abs(M(z_, alpha)-M(z, alpha))<1e-5):
-            break
-        z=z-beta*gradM(z,alpha)
-        z[0]=2
-        z[N]=-2
-    #print(z)
-    print(i," iterations")
-    print("rho =", rho(z))
-    #temp = rho(z)
-    #if (abs(temp) < 1e-6):
-    break
-    #if temp > 0:
-        #alpha_end = alpha
-    #else:
-        #alpha_begin = alpha
+    alpha = (alphaBegin + alphaEnd) / 2
+    z_alpha = IterationProcess()
+    temp = rho(z_alpha)
+    print("alpha " + alpha + " rho " + temp)
     
-
+    if abs(temp) < 1e-6:
+        break
     
-#print (linalg.norm(gradM(z,alpha)))
-#print("z = ", z)
-#print("s = ", s)
-
-abs = np.arange(a, b+(b-a)/N, (b-a)/N)
-fig = plt.figure()
-l1, = plt.plot(abs, np.ones(N+1)-0.5,  label='initial')
-l2, = plt.plot(abs ,z,  label='z')
-l3, = plt.plot(abs ,solution,  label='exact')
-plt.legend(handles=[l1, l2, l3])
-for jj in range(0, 10):
-    t=0.2*jj
-    #print("Nev = ", integral(z**t, a, b)-Ur(z,t), "t =", t)
-plt.show()
-
-
-
-
-
-
-
+    if temp>0:
+        alphaEnd = alpha
+    else:
+        alphaBegin = alpha
+        
+z_k = 2*s/math.pi
+zbrs = z(s)
+z_k[0] = zbrs[0]
+z_k_init = z_k
+M_new = 0
+M_old = M_alpha_delta(z_k)
+for i in range(N):
+    print("i ", i)
+    z_k_1 = z_k - beta * DM_alpha_delta(z_k)
+    M_new = M_alpha_delta(z_k_1)
+    z_k = z_k_1
+    M_old = M_new
