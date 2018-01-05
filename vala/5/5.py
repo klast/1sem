@@ -12,6 +12,8 @@ import scipy.sparse.linalg as spla
 import matplotlib.pyplot as plt
 import time
 
+pd.set_option('precision', 4)
+
 #входная матрица
 input_matrix = sc.io.mmread('0.4solve.mtx')
 #правая часть
@@ -23,15 +25,6 @@ matrix = input_matrix.tocsc()
 L = sc.sparse.tril(matrix).tocsr()
 #главная диагональ
 diag = matrix.diagonal()
-
-#выводит картинку структуры разряженной матрицы
-#def show_spy(input_matrix):
-#    plt.spy(input_matrix, markersize=1)
-#    plt.show()
-#show_spy(matrix)
-#raise ValueError(1)
-#show_spy(L)
-#raise ValueError(1)   
 
 #для предобуславливателя Гаусса-Зейделя
 def GS_precond(x):
@@ -114,12 +107,14 @@ class Solver:
         else:
             full_time = self.time + preconds[pr_name]['time']            
         self.df.loc[pr_name] = [self.iter, self.time, full_time, resid, time_1_iter, norm]
+        
     def callback_iter(self, x):
         global iter
         iter+=1
     
     def callback_resid(self, x):
         global iter
+        #gmres выдает в callback функцию сразу невязку, а не промежуточное решение
         if self.func == spla.gmres:
             #print(x)
             self.res.append(x)
@@ -134,7 +129,6 @@ class Solver:
         self.sol = self.func(*args, **kwargs)
         end_time = time.clock()
         self.time = end_time - start_time
-        #self.output_results(name)
         return end_time - start_time
     
     def timeit_with_info(self, pr_name, *args, **kwargs):
@@ -187,15 +181,17 @@ result.to_excel(writer, 'result')
 writer.save()
 writer.close()
 
+#сохранение структуры исходной матрицы
 plt.spy(matrix, markersize=1)
 plt.savefig('spy')
 plt.clf()
 
-#def save_residuals(pr_name):
-    #plt.figure(figsize=(12,8))
-    #if pr_name == None:
-        #t
+#сохранение структуры L матрицы
+plt.spy(L, markersize=1)
+plt.savefig('L')
+plt.clf()
 
+#нахождение невязок и сохранение графиков
 for pr_name in preconds:
     plt.figure(figsize=(12,8))
     _tol = preconds[pr_name]['tol']
@@ -211,21 +207,3 @@ for pr_name in preconds:
     plt.savefig(pr_name)
     plt.clf()
     
-    
-
-#print("bicgstab chol resid")
-#resid_bicgstab_chol = bicgstab.get_residual("bicgstab_chol", matrix, rhs,tol=1e-8,maxiter=1000,M=Cholesky_preconditioner)
-#print("lgmres chol resid")
-#resid_lgmres_chol = lgmres.get_residual("lgmres_chol", matrix, rhs,tol=1e-8,maxiter=1000, M=Cholesky_preconditioner)
-#print("gmres chol resid")
-#resid_gmres_chol = gmres.get_residual("gmres_chol", matrix, rhs,tol=1e-8,maxiter=1000, M=Cholesky_preconditioner)
-
-#labels = ['bicgstab_spilu', 'lgmres_spilu', 'gmres_spilu']
-#plt.semilogy(resid_bicgstab_chol)
-#plt.semilogy(resid_lgmres_chol)
-#plt.semilogy(resid_gmres_chol)
-#plt.legend(labels)
-#plt.show()
-
-
-
