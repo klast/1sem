@@ -15,7 +15,7 @@ eps = 1e-8
 
 #генерирую симметрическую положительно определенную матрицу
 def generate_matrix(nx, k):
-    np.random.seed(153)
+   # np.random.seed(153)
     B = np.random.rand(nx, nx) - 0.5
     B_trans = B.transpose()
     E = np.identity(nx)
@@ -91,8 +91,8 @@ class Solver:
             F_prev, F_curr = F_curr, np.dot(self.matrix @ sol, sol) - 2 * np.dot(self.rhs, sol)
             residual_arr = np.append(residual_arr, [self.relative_residual(sol)])
             self.construct_output(sol)
-            if F_curr > F_prev:
-                raise ValueError("F_curr > F_prev", F_prev)
+            if F_curr > F_prev+1e-7:
+                raise ValueError("F_curr > F_prev", F_prev,iter)
         return sol, iter, self.construct_dataframe()
     
     #метод минимальной невязки
@@ -132,7 +132,7 @@ class Solver:
         residual = self.residual_norm(sol)
         self.init_output()
         residual_arr = np.array([self.relative_residual(sol)])
-        while self.relative_residual(sol) > self.eps*1e-7:
+        while self.relative_residual(sol) > self.eps*1e-5:
             iter += 1
             alpha = np.dot(r, r) / np.dot(self.matrix @ p, r)
             sol += alpha * p
@@ -144,12 +144,12 @@ class Solver:
             residual_arr = np.append(residual_arr, [self.relative_residual(sol)])
             r_arr.append(r)
             p_arr.append(p)
-            if residual > residual_prev:
-                raise ValueError("Норма невязки не уменьшилась на шаге", iter)
+            #if residual > residual_prev+1e-2:
+            #    raise ValueError("Норма невязки не уменьшилась на шаге", iter)
         return sol, iter, self.construct_dataframe(), r_arr, p_arr
 
 
-k = 50
+k = 0.1
 nx = 500
 #генериуем матрицу
 mat = generate_matrix(nx, k)
@@ -157,7 +157,7 @@ print("Исходная матрица\n", mat)
 #инициализируем решатель
 my_solver = Solver(mat)
 writer = pd.ExcelWriter('result.xlsx')
-sigma = np.linalg.norm(mat)
+sigma = np.linalg.norm(mat, 2)
 mu = np.min(np.linalg.eigvals(mat.transpose() + mat), axis = 0)/2.
 q_teor = math.sqrt(1 - mu*mu / (sigma*sigma))
 #вызываем
@@ -168,6 +168,7 @@ df_1.to_excel(writer,'steepest_descent')
 x_2, iter_2, df_2, q_real = my_solver.minimal_residual_iter()
 print("Метод минимальной невязки", iter_2, "итераций")
 print(df_2.tail(1))
+print("q",q_teor,"q_real",q_real)
 df_2.to_excel(writer,'minimal_residual')
 x_3, iter_3, df_3, r_arr, p_arr = my_solver.conjugate_gradient()
 r_arr, p_arr = np.array(r_arr), np.array(p_arr)
@@ -176,12 +177,12 @@ print(df_3.tail(1))
 print("Проверяем для случайных i,j")
 n1 = random.randint(0, math.ceil(iter_3/2)-1)
 n2 = random.randint(math.ceil(iter_3/2), iter_3-1)
-print("(A*p_i,p_j) = ",(mat.dot(p_arr[n1, :])).dot(p_arr[n2, :]))
-print("(A*p_i,p_i+1) = ", (mat.dot(p_arr[n1, :])).dot(p_arr[n1+1, :]))
+print("(A*p_i,p_j) = ",(mat.dot(p_arr[n1, :])).dot(p_arr[n2, :])/np.linalg.norm(mat.dot(p_arr[n1, :]))/np.linalg.norm(p_arr[n2, :]))
+print("(A*p_i,p_i+1) = ", (mat.dot(p_arr[n1-30, :])).dot(p_arr[n1+1, :])/np.linalg.norm(mat.dot(p_arr[n1-30, :]))/np.linalg.norm(p_arr[n1+1, :]))
 print("(r_i,r_j) = ", r_arr[n1, :].dot(r_arr[n2, :]))
 df_3.to_excel(writer,'conjugate_gradient')
 writer.save()
-os.system("start result.xlsx")
+#os.system("start result.xlsx")
 labels = ['Метод скорейшего спуска', 'Метод минимальной невязки', 'Метод сопряженных градиентов']
 plt.semilogy(df_1['||b-Ax||/||b||'])
 plt.semilogy(df_2['||b-Ax||/||b||'])
