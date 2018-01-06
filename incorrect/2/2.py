@@ -13,7 +13,7 @@ from scipy.special import gamma
 import matplotlib.pyplot as plt
 import random
 
-epsilon = 1e-6
+epsilon = 1e-3
 N = 20
 a = 0.
 b = math.pi
@@ -27,9 +27,9 @@ t = np.arange(c, d+deltaT, deltaT)
 s = np.arange(a, b+deltaS, deltaS)
 theta = np.random.uniform(-1, 1, t.shape[0])
 alpha=1e-8
+beta = 100.
+h=1e-3
 sigma = 1e-4
-h=0
-sigma = epsilon*2
 ck = 0.02986315562
 cu = -0.035714285714
 
@@ -89,7 +89,7 @@ def L_delta(z_s):
     return I_approx(z_s) + myPsi(z_s)
 
 def find_lambda_delta(z_s):
-    lambda_delta = sc.minimize(L_delta, np.ones(N+1))
+    lambda_delta = sc.minimize(L_delta, np.ones(N+1), method='Nelder-Mead')
     return L_delta(lambda_delta.x)
 
 def rho(z_alpha):
@@ -119,28 +119,37 @@ def DM_alpha_delta(z_s):
     return result
 
 def IterationProcess():
-    z_k = 2*s/math.pi
+    global beta
+    beta = 100
+    z_k = 2*s
     zbrs = [z(i) for i in s]
-    #z_k[0] = zbrs[0]
+    z_k[0] = zbrs[0]
     z_k_init = z_k.copy()
     M_new = 0
     M_old = M_alpha_delta(z_k)
     
-    
-    for i in range(N):
+    i = 1
+    while True:
         z_k_1 = z_k - beta * DM_alpha_delta(z_k)
         M_new = M_alpha_delta(z_k_1)
         z_k = z_k_1
-        M_old=M_new
+        if (abs(M_old-M_new) < 1e-7):
+            break
+        if M_new > M_old:
+            beta = beta / 2
+            z_k = z_k_init.copy()
+            M_new = 0
+            M_old = M_alpha_delta(z_k)
+            continue
+        M_old = M_new
     result = z_k
     return result
 
 #начнем искать alpha
 B = myB()
-beta = 5.
 alpha = 0
 alphaBegin = 0
-alphaEnd = 1
+alphaEnd = 1e10
 temp = 1
 z_alpha = [z(i) for i in s]
 lambda_delta = find_lambda_delta(z_alpha)
@@ -155,32 +164,32 @@ while True:
     if abs(temp) < 1e-6:
         break
     
-    if temp<0:
+    if temp>0:
         alphaEnd = alpha
     else:
         alphaBegin = alpha
         
-alpha_arr = np.arange(0.1732,0.1733, 1e-6)
-temp_arr = []
-for al in alpha_arr:
-    alpha = al
-    z_alpha = IterationProcess()
-    temp = rho(z_alpha)
-    temp_arr.append(temp)
+#alpha_arr = np.arange(0.17,0.18, 1e-4)
+#temp_arr = []
+#for al in alpha_arr:
+#    alpha = al
+#    z_alpha = IterationProcess()
+#    temp = rho(z_alpha)
+#    temp_arr.append(temp)
     
-plt.plot(alpha_arr, temp_arr)
-plt.show()
+#plt.plot(alpha_arr, temp_arr)
+#plt.show()
     
-        
-z_k = 2*s/math.pi
+alpha = 0     
+z_k = 2*s
 zbrs = [z(i) for i in s]
-#z_k[0] = zbrs[0]
+z_k[0] = zbrs[0]
 z_k_init = z_k
 M_new = 0
 M_old = M_alpha_delta(z_k)
 i=1
-while False:
-    #print("i ", i)
+while True:
+    print("i ", i)
     i = i + 1
     z_k_1 = z_k - beta * DM_alpha_delta(z_k)
     M_new = M_alpha_delta(z_k_1)
@@ -188,3 +197,9 @@ while False:
     if (abs(M_old-M_new) < 1e-7):
        break 
     M_old = M_new
+    
+plt.plot(s, zbrs)
+plt.plot(s,z_k)
+plt.plot(s, z_k_init)
+plt.legend(['exact', 'current', 'init'])
+plt.show()
