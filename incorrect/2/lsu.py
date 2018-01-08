@@ -129,7 +129,8 @@ def gradM(z, alpha):
         for i in range(0,N+1):
             intk[i] = dKdz(s[k], t[i], z[k])*ii[i]
         dk[k] = integral(intk, c, d)
-    return 2*dk + alpha*f
+    result = 2*dk + alpha * f
+    return result
 
 
 
