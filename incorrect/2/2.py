@@ -105,6 +105,8 @@ def I_approx(z_s):
 def L_delta(z_s):
     return I_approx(z_s) + myPsi(z_s)
 
+lambda_delta = opt.minimize(get_lambda_delta_arg, np.array([1, 1]), method='Powell', tol=1e-8).fun
+
 def find_lambda_delta(z_s):
     lambda_delta = sc.minimize(L_delta, np.ones(N+1))
     return L_delta(lambda_delta.x)
