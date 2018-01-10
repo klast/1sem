@@ -50,6 +50,8 @@ def myplot(values, indexes, title, name):
             plt.plot(x, values[i])
     plt.title(title)
     plt.grid(True)
+    plt.xlim(1-0.1,10+0.1)
+    plt.yticks(np.arange(0.1,1.1,0.1))
     legends = ['1e-4', '1e-3', '1e-2', '1e-1', 'exact']
     plt.legend(legends)
     plt.xlabel('i')
@@ -298,7 +300,7 @@ if __name__ == "__main__":
 
         Zalpha1.append(z)
         z_all = [Zalpha1[i] for i in range(2)]
-        x = np.arange(10)
+        x = np.arange(10) + 1
         plt.plot(x, Zalpha1[0])
         plt.plot(x, Zalpha1[1], marker='o', linestyle="--")
         plt.title("Task4")
@@ -307,6 +309,8 @@ if __name__ == "__main__":
         plt.legend(legends)
         plt.xlabel('i')
         plt.ylabel('Z_i')
+        plt.xlim(1-0.1,10+0.1)
+        plt.yticks(np.arange(0.1,1.1,0.1))
         plt.show()
         plt.savefig('Task4.png')
         plt.clf()
