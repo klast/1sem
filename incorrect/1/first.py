@@ -41,22 +41,17 @@ def LambdaDeltaMu(z):
 
 def myplot(values, indexes, title, name):
     x = np.arange(10) + 1
-    #indexses2 = indexes
-    # indexses2 = [0, 1, 2, 3, 10]
-    # indexses2 = [0, 4, 6, 8, 10]
-    indexses2 = [0, 5, 7, 9, 10]
+    plt.figure(figsize=(12,8))
     for i in indexes:
-        if i == (len(indexes) - 1):
+        if i == 10:
             plt.plot(x, values[i], marker='o', linestyle="--")
             continue
-        if i in indexses2:
+        if i in indexes:
             plt.plot(x, values[i])
     plt.title(title)
     plt.grid(True)
-    legends = ['Ea=1e-4,Eu=1e-4', 'Ea=1e-4,Eu=1e-3', 'Ea=1e-4,Eu=1e-2', 'Ea=1e-4,Eu=1e-1', 'Ea=1e-3,Eu=1e-4',
-               'Ea=1e-3,Eu =1e-3', 'Ea=1e-2,Eu =1e-4','Ea=1e-2,Eu=1e-2', 'Ea=1e-1,Eu=1e-4', 'Ea=1e-1,Eu=1e-1',
-               'Точное решение']
-    plt.legend([legends[i] for i in indexses2])
+    legends = ['1e-4', '1e-3', '1e-2', '1e-1', 'exact']
+    plt.legend(legends)
     plt.xlabel('i')
     plt.ylabel('Z_i')
     plt.show()
@@ -71,6 +66,7 @@ for i in range(10):
     bounds.append((0, 10))
 
 if __name__ == "__main__":
+    writer = pd.ExcelWriter('result.xlsx')
     if False:
         A = np.random.random((m, n))
         z = np.random.random((n, 1))
@@ -103,6 +99,12 @@ if __name__ == "__main__":
     # Р—Р°РґР°РЅРёРµ 1
     if taskList[0] == 1:
         print('Часть 1')
+        h_vec = []
+        sigma_vec = []
+        lambda_vec = []
+        norm1_vec = []
+        norm2_vec = []
+        alpha_vec = []
         for eps in epsilon:
             number += 1
             epsilon_A = eps[0]
@@ -110,22 +112,40 @@ if __name__ == "__main__":
             A_approx = np.multiply(A, 1 + theta_A * epsilon_A)
             u_approx = np.multiply(u, 1 + theta_u * epsilon_u)
             h = np.linalg.norm(A) * epsilon_A
+            h_vec.append(h)
             sigma = np.linalg.norm(u) * epsilon_u
+            sigma_vec.append(sigma)
             lambda_delta = sc.differential_evolution(LambdaDelta, bounds, tol=0.0001)
+            lambda_vec.append(LambdaDelta(lambda_delta.x))
             norm_1 = (np.linalg.norm(np.dot(A_approx, lambda_delta.x) - u_approx))
+            norm1_vec.append(norm_1)
             ans = my_solve(A_approx, u_approx, LambdaDelta(lambda_delta.x), h, sigma)
             alpha = ans[0]
+            alpha_vec.append(alpha)
             Zalpha.append(ans[1])
             res = np.linalg.norm(z - ans[1])
             norm_2 = np.linalg.norm(z - ans[1])
-            print("в„–", number, "Ea =", epsilon_A, "Eu =", epsilon_u, "h =", h, "Sigma =", sigma,
+            norm2_vec.append(norm_2)
+            print(number, "Ea =", epsilon_A, "Eu =", epsilon_u, "h =", h, "Sigma =", sigma,
                   "Lambda =", LambdaDelta(lambda_delta.x), "Norma1 =", norm_1, "Norma2 =", norm_2, 'alpha =', alpha)
+        df1 = pd.DataFrame({
+                    'epsilon_A': [epsilon[i][0] for i in range(10)],
+                    'epsilon_u': [epsilon[i][1] for i in range(10)],
+                    'h' : h_vec,
+                    'sigma' : sigma_vec,
+                    'lambda' : lambda_vec,
+                    'norm1' : norm1_vec,
+                    'norm2' : norm2_vec,
+                    'alpha' : alpha_vec
+                    })
+        df1.to_excel(writer,'task1')
         Zalpha.append(z)  
         z_all = [Zalpha[i] for i in range(11)] 
-        myplot(z_all, np.arange(11), 'Task1', 'Task1.png')
+        myplot(z_all, [0, 1, 2, 3, 10], 'EPS_A=1e-4', '1-1.png')
+        myplot(z_all, [0, 4, 6, 8, 10], 'EPS_u=1e-4', '1-2.png')
+        myplot(z_all, [0, 5, 7, 9, 10], 'EPS_A=EPS_u', '1-3.png')
 
-    # Р—Р°РґР°РЅРёРµ 2
-    if taskList[1] == 1:
+    if taskList[1] == 1:        
         print('Часть 2')
         m = 12
         A = np.zeros((12, 10))
@@ -140,6 +160,13 @@ if __name__ == "__main__":
         theta_A = np.random.uniform(-1, 1, (m, n))
         theta_u = np.random.uniform(-1, 1, m)
         Zalpha = []
+        h_vec = []
+        sigma_vec = []
+        lambda_vec = []
+        norm1_vec = []
+        norm2_vec = []
+        alpha_vec = []
+        mu_vec = []
         number = 0
         for eps in epsilon:
             number += 1
@@ -148,27 +175,53 @@ if __name__ == "__main__":
             A_approx = np.multiply(A, 1 + theta_A * epsilon_A)
             u_approx = np.multiply(u, 1 + theta_u * epsilon_u)
             h = np.linalg.norm(A) * epsilon_A
+            h_vec.append(h)
             sigma = np.linalg.norm(u) * epsilon_u
+            sigma_vec.append(sigma)
             x0 = np.random.random(m)
             lambda_delta = sc.differential_evolution(LambdaDelta, bounds, tol=0.0001)
+            lambda_vec.append(LambdaDelta(lambda_delta.x))
             norm_1 = (np.linalg.norm(np.dot(A_approx, lambda_delta.x) - u_approx))
+            norm1_vec.append(norm_1)
             ans = my_solve(A_approx, u_approx, LambdaDelta(lambda_delta.x), h, sigma)
             alpha = ans[0]
+            alpha_vec.append(alpha)
             Zalpha.append(ans[1])
             res = np.linalg.norm(z - ans[1])
             norm_2 = np.linalg.norm(z - ans[1])
+            norm2_vec.append(norm_2)
             mumu = lambda_delta = sc.differential_evolution(LambdaDeltaMu, bounds, tol=0.0001)
             mu = (np.linalg.norm(np.dot(A_approx, mumu.x) - u_approx))
+            mu_vec.append(mu)
             print(number, "Ea =", epsilon_A, "Eu =", epsilon_u, "h =", h, "Sigma =", sigma,
                   "Lambda =", LambdaDelta(lambda_delta.x), "Norma1 =", norm_1, "Norma2 =", norm_2, 'alpha =', alpha,
                   'mu =', mu)
+        df2 = pd.DataFrame({
+                    'epsilon_A': [epsilon[i][0] for i in range(10)],
+                    'epsilon_u': [epsilon[i][1] for i in range(10)],
+                    'h' : h_vec,
+                    'sigma' : sigma_vec,
+                    'lambda' : lambda_vec,
+                    'norm1' : norm1_vec,
+                    'norm2' : norm2_vec,
+                    'alpha' : alpha_vec,
+                    'mu' : mu_vec
+                    })
+        df2.to_excel(writer, 'task2')
         Zalpha.append(z)
         z_all = [Zalpha[i] for i in range(11)]
-        myplot(z_all, np.arange(11), 'Task2', 'Task2.png')
+        myplot(z_all, [0, 1, 2, 3, 10], 'EPS_A=1e-4', '2-1.png')
+        myplot(z_all, [0, 4, 6, 8, 10], 'EPS_u=1e-4', '2-2.png')
+        myplot(z_all, [0, 5, 7, 9, 10], 'EPS_A=EPS_u', '2-3.png')
 
     if taskList[2] == 1:
         print("Часть 3")
-
+        h_vec = []
+        sigma_vec = []
+        lambda_vec = []
+        norm1_vec = []
+        norm2_vec = []
+        alpha_vec = []
         m = 8
         A = np.zeros((8, 10))
         u = np.zeros(8)
@@ -188,20 +241,39 @@ if __name__ == "__main__":
             A_approx = np.multiply(A, 1 + theta_A * epsilon_A)
             u_approx = np.multiply(u, 1 + theta_u * epsilon_u)
             h = np.linalg.norm(A) * epsilon_A
+            h_vec.append(h)
             sigma = np.linalg.norm(u) * epsilon_u
+            sigma_vec.append(sigma)
             x0 = np.random.random(m)
             lambda_delta = sc.differential_evolution(LambdaDelta, bounds, tol=0.0001)
+            lambda_vec.append(LambdaDelta(lambda_delta.x))
             norm_1 = (np.linalg.norm(np.dot(A_approx, lambda_delta.x) - u_approx))
+            norm1_vec.append(norm_1)
             ans = my_solve(A_approx, u_approx, LambdaDelta(lambda_delta.x), h, sigma)
             alpha = ans[0]
+            alpha_vec.append(alpha)
             Zalpha.append(ans[1])
             res = np.linalg.norm(z - ans[1])
             norm_2 = np.linalg.norm(z - ans[1])
+            norm2_vec.append(norm_2)
             print(number, "Ea =", epsilon_A, "Eu =", epsilon_u, "h =", h, "Sigma =", sigma,
                   "Lambda =", LambdaDelta(lambda_delta.x), "Norma1 =", norm_1, "Norma2 =", norm_2, 'alpha =', alpha)
         Zalpha.append(z)
+        df3 = pd.DataFrame({
+                    'epsilon_A': [epsilon[i][0] for i in range(10)],
+                    'epsilon_u': [epsilon[i][1] for i in range(10)],
+                    'h' : h_vec,
+                    'sigma' : sigma_vec,
+                    'lambda' : lambda_vec,
+                    'norm1' : norm1_vec,
+                    'norm2' : norm2_vec,
+                    'alpha' : alpha_vec
+                    })
+        df3.to_excel(writer, 'task3')
         z_all = [Zalpha[i] for i in range(11)]
-        myplot(z_all, np.arange(11), 'Task3', 'Task3.png')
+        myplot(z_all, [0, 1, 2, 3, 10], 'EPS_A=1e-4', '3-1.png')
+        myplot(z_all, [0, 4, 6, 8, 10], 'EPS_u=1e-4', '3-2.png')
+        myplot(z_all, [0, 5, 7, 9, 10], 'EPS_A=EPS_u', '3-3.png')
 
     if taskList[3] == 1:
         print('Часть 4')
@@ -231,7 +303,7 @@ if __name__ == "__main__":
         plt.plot(x, Zalpha1[1], marker='o', linestyle="--")
         plt.title("Task4")
         plt.grid(True)
-        legends = ['Arrpoximate', 'Exact']
+        legends = ['Arrpox', 'Exact']
         plt.legend(legends)
         plt.xlabel('i')
         plt.ylabel('Z_i')
@@ -239,3 +311,5 @@ if __name__ == "__main__":
         plt.savefig('Task4.png')
         plt.clf()
     print('Р’С‹С‡РёСЃР»РµРЅРёСЏ РїСЂРѕС€Р»Рё СѓСЃРїРµС€РЅРѕ')
+    writer.save()
+    writer.close()
