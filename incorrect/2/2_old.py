@@ -23,7 +23,7 @@ alpha=1e-8
 sigma = 0
 h=1e-1
 #h=0.00012
-h= 2e-4
+#h= 2e-4
 #ck=1
 #ck = 0.02986315562
 ck = 0.04761904761
@@ -86,21 +86,9 @@ def dz_2(z):
     return dz
 
 def calc_z(z, beta, alpha):
-    global best_norm, saved_z
     z_new =  z-beta*gradM(z, alpha)
-    no = np.linalg.norm(solution - z_new,2)
-    if no < best_norm:
-        best_norm = no
-        saved_z = z_new.copy()
     return z_new
 
-def constr_z(z):
-    z_ret = []
-    for i in range(0,N+1):
-        razn = z[i] - solution[i]
-        z_ret.append(solution[i] + razn * 10/N)
-    return np.array(z_ret)
-    
 
 def integral(f,a_,b_):
     return trapz(f, dx=(b_-a_)/N)
@@ -163,13 +151,19 @@ def gradM(z, alpha):
 
 U = u(t) * (1 + epsilon * theta)
 N_arr = [10, 50, 100]
-z_arr = []
+#z_arr = []
 
 for N in N_arr:
     s = np.arange(a, b+(b-a)/N, (b-a)/N)
-    solution = []
-    for i in range(0,N+1):
-        solution.append(2*math.cos(s[i]))
+    #solution = [2*math.cos(i) for i in s]
+    if N == 10:
+        solution = z_arr[0].copy()
+    elif N==50:
+        solution = z_arr[1].copy()
+    else:
+        solution = z_arr[2].copy()
+    #for i in range(0,N+1):
+        #solution.append(z_arr[0][i])
     t = np.arange(c, d+(d-c)/N, (d-c)/N)
     theta = np.random.uniform(-1, 1, t.shape[0])
     epsilon = h

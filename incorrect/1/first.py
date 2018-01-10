@@ -1,4 +1,4 @@
-import numpy as np
+﻿import numpy as np
 import scipy.optimize as sc
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -55,7 +55,7 @@ def myplot(values, indexes, title, name):
     plt.grid(True)
     legends = ['Ea=1e-4,Eu=1e-4', 'Ea=1e-4,Eu=1e-3', 'Ea=1e-4,Eu=1e-2', 'Ea=1e-4,Eu=1e-1', 'Ea=1e-3,Eu=1e-4',
                'Ea=1e-3,Eu =1e-3', 'Ea=1e-2,Eu =1e-4','Ea=1e-2,Eu=1e-2', 'Ea=1e-1,Eu=1e-4', 'Ea=1e-1,Eu=1e-1',
-               'Exact solution']
+               'Точное решение']
     plt.legend([legends[i] for i in indexses2])
     plt.xlabel('i')
     plt.ylabel('Z_i')
@@ -102,7 +102,7 @@ if __name__ == "__main__":
 
     # Р—Р°РґР°РЅРёРµ 1
     if taskList[0] == 1:
-        print('Р—Р°РґР°РЅРёРµ в„–1')
+        print('Часть 1')
         for eps in epsilon:
             number += 1
             epsilon_A = eps[0]
@@ -120,13 +120,13 @@ if __name__ == "__main__":
             norm_2 = np.linalg.norm(z - ans[1])
             print("в„–", number, "Ea =", epsilon_A, "Eu =", epsilon_u, "h =", h, "Sigma =", sigma,
                   "Lambda =", LambdaDelta(lambda_delta.x), "Norma1 =", norm_1, "Norma2 =", norm_2, 'alpha =', alpha)
-        Zalpha.append(z)  # РџРѕСЃР»РµРґРЅРёРј РґРѕР±Р°РІР»СЏРµРј РёСЃС…РѕРґРЅРѕРµ СЂРµС€РµРЅРёРµ
-        z_all = [Zalpha[i] for i in range(11)]  # РњР°СЃСЃРёРІ Р·РЅР°С‡РµРЅРёР№ Р°СЂРіСѓРјРµРЅС‚Р°
+        Zalpha.append(z)  
+        z_all = [Zalpha[i] for i in range(11)] 
         myplot(z_all, np.arange(11), 'Task1', 'Task1.png')
 
     # Р—Р°РґР°РЅРёРµ 2
     if taskList[1] == 1:
-        print('Р—Р°РґР°РЅРёРµ в„–2')
+        print('Часть 2')
         m = 12
         A = np.zeros((12, 10))
         u = np.zeros(12)
@@ -159,7 +159,7 @@ if __name__ == "__main__":
             norm_2 = np.linalg.norm(z - ans[1])
             mumu = lambda_delta = sc.differential_evolution(LambdaDeltaMu, bounds, tol=0.0001)
             mu = (np.linalg.norm(np.dot(A_approx, mumu.x) - u_approx))
-            print("в„–", number, "Ea =", epsilon_A, "Eu =", epsilon_u, "h =", h, "Sigma =", sigma,
+            print(number, "Ea =", epsilon_A, "Eu =", epsilon_u, "h =", h, "Sigma =", sigma,
                   "Lambda =", LambdaDelta(lambda_delta.x), "Norma1 =", norm_1, "Norma2 =", norm_2, 'alpha =', alpha,
                   'mu =', mu)
         Zalpha.append(z)
@@ -167,7 +167,7 @@ if __name__ == "__main__":
         myplot(z_all, np.arange(11), 'Task2', 'Task2.png')
 
     if taskList[2] == 1:
-        print("Р—Р°РґР°РЅРёРµ в„–3")
+        print("Часть 3")
 
         m = 8
         A = np.zeros((8, 10))
@@ -178,8 +178,8 @@ if __name__ == "__main__":
         theta_A = np.random.uniform(-1, 1, (8, 10))
         theta_u = np.random.uniform(-1, 1, 8)
         Zalpha = []
-        z = np.array([0.392336654424617, 0.659472051961127, 0.546375629369223, 0.213571801075987, 0.615375228330694,
-                      0.545555586624234, 0.644785521659623, 0.357664133789637, 0.239212769407693, 0.317865904492300])
+        z = np.array([0.621239493461318, 0.425657429338214, 0.519183117500868, 0.300995461139938, 0.723035150122100,
+                      0.207081883879460, 0.147838111664225, 1.00435100889945, 0.320579456514438, 0.422201736579000])
         number = 0
         for eps in epsilon:
             number += 1
@@ -197,14 +197,14 @@ if __name__ == "__main__":
             Zalpha.append(ans[1])
             res = np.linalg.norm(z - ans[1])
             norm_2 = np.linalg.norm(z - ans[1])
-            print("в„–", number, "Ea =", epsilon_A, "Eu =", epsilon_u, "h =", h, "Sigma =", sigma,
+            print(number, "Ea =", epsilon_A, "Eu =", epsilon_u, "h =", h, "Sigma =", sigma,
                   "Lambda =", LambdaDelta(lambda_delta.x), "Norma1 =", norm_1, "Norma2 =", norm_2, 'alpha =', alpha)
         Zalpha.append(z)
         z_all = [Zalpha[i] for i in range(11)]
         myplot(z_all, np.arange(11), 'Task3', 'Task3.png')
 
     if taskList[3] == 1:
-        print('Р—Р°РґР°РЅРёРµ в„–4')
+        print('Часть 4')
         m = 10
         A = np.zeros((10, 10))
         A = A0.copy()
@@ -225,7 +225,6 @@ if __name__ == "__main__":
         print("Lambda =", LambdaDelta(lambda_delta.x), "Norma1 =", norm_1, "Norma2 =", norm_2, 'alpha =', alpha)
 
         Zalpha1.append(z)
-        # РњР°СЃСЃРёРІ Р·РЅР°С‡РµРЅРёР№ Р°СЂРіСѓРјРµРЅС‚Р°
         z_all = [Zalpha1[i] for i in range(2)]
         x = np.arange(10)
         plt.plot(x, Zalpha1[0])
